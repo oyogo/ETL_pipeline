@@ -1,0 +1,8 @@
+file: salary_cleaned.csv
+file_size: 1108
+pin_hash: 4e71c5703e48a6bc
+type: csv
+title: 'salary_cleaned: a pinned 10 x 7 data frame'
+description: ~
+created: 20220622T082426Z
+api_version: 1.0

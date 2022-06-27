@@ -1,0 +1,249 @@
+---
+title: "Data cleaning"
+author: "Clinton"
+output:
+  html_document:
+    theme:
+      bootswatch: simplex
+category: R
+tags:
+ - r
+ - data cleaning
+ - data wrangling
+ - data preparation
+---
+
+
+It a widely known fact that a data scientist spends more than 80% of a data science project time cleaning up and preparing data for analysis and modelling, as such, its indispensable for a data scientist to have a good understanding and practical skills on data cleaning and munging. To that effect, this article seeks to practically apply some fundamental techniques of data cleaning and munging on a messy data set.   
+
+## About the data. 
+The data used in this analysis was obtained from a [Salary Survey](https://www.askamanager.org/2021/04/how-much-money-do-you-make-4.html) done by askamanager.org.   
+
+### Load libraries 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r}
+library(data.table) # for data wrangling 
+library(plotly)   # for data visualization
+library(stringi) # package for string manipulation  
+library(dplyr) # for data manipulation/wrangling
+library(pins) # for data versioning
+library(googlesheets4) # fetching data from google sheets  
+```
+
+### Data import  
+I downloaded the data from google sheets then put it in a data folder in my github repository. On a later article I'll write on how to access it directly from googlesheets into R.  
+
+```{r}
+#salary_data <- fread("https://raw.githubusercontent.com/oyogo/data/main/Ask%20A%20Manager%20Salary%20Survey%202021%20(Responses)%20-%20Form%20Responses%201.csv")
+
+gs4_deauth() # this deactivates authentication. We won't be prompted to login using credentials.
+
+salary_data <- read_sheet("https://docs.google.com/spreadsheets/d/1IPS5dBSGtwYVbjsfbaMCYIWnOuRmJcbequohNxCyGVw/edit?resourcekey#gid=1625408792")
+salary_data <- data.table::setDT(salary_data)
+```
+
+### Data inspection   
+The first step is to inspect our data.   
+You'd probably want to get the folllowing information.     
+  - total number of observations    
+  - total number of variables   
+  - variable types  
+  - column names  
+  - have a look at the first few records    
+  
+```{r}
+# The str() function returns quite a number of details we'd want to see, variable data types, column names, total number of observations and variables.    
+str(salary_data)
+
+# You could also use head() function to have a look at the first few records  
+# head(salary_data) 
+
+```
+
+### Data cleaning   
+Some of the key issues that data cleaning seeks to address are:  
+  * Consistency/uniformity      
+  * Missing values    
+  * Column names    
+  * Spelling issues    
+  * Data types     
+
+A quick inspection of our dataset as shown above shows that it needs some bit of cleaning.       
+  - *First of all the column names needs to be changed*. Most of them are rather too long, have spaces, and some contain special characters. This would bring problems later when referencing the columns. Its a good practise to have the column names confirm to one of the five naming conventions:      
+      * alllowercase      
+      * period.separated      
+      * underscore_separated      
+      * lowerCamelCase      
+      * UpperCamelCase     
+      
+  - *The country column has a myriad versions of United States for example*. This brings up the issue of consistency and spelling issues. Let's have one name reference to United States rather than having u.s.a, U.S, United State etc. They are just refering to one and the same Country.      
+  - *We all know that salary should be of integer/float data type but from the inspection you'll see its registered as a character type*. This touches on data types. Sometimes when reading in data into R, numerical data is read as character of which it isn't. We definitely should change that.      
+  - *Some columns have soooo many null entries*. What should we do with such entries, just hang in there.     
+  
+#### Column names    
+We can use the combine function c() to create a vector of the desired names the assign them to column names of the dataframe using the names() function as shown below. There are other ways of doing this, you could explore and settle on what works best for you.  
+
+```{r}
+# change the columns name - observe the naming syntax for headers/columns
+ names(salary_data) <- c("Timestamp","age","industry","job_title","job_title_context","annual_salary",
+                         "Other_monetary_comp","currency","currency_other",
+                         "income_context","country","state","city","professional_experience_years","field_experience_years",
+                         "highest_edu_level","gender","race")
+
+```
+
+#### Consistency and spelling issues   
+Categorical variables such as level of education and country need some bit of cleaning, we need have the values consistent rather than having variants of a given category.    
+ 
+```{r}
+# College degree and Some college kinda means the same. Let us just categorize them into one (College degree). 
+salary_data$highest_edu_level <- gsub("Some college","College degree",salary_data$highest_edu_level)
+
+```
+
+In the chunk above, we have used gsub to do string replacement. I'd like us to explore some other methods for doing a similar task. 
+Thanks to the stringi and stringr packages, there's a whole myriad of functions we can use to manipulate the data.  
+For now we can make use of the stri_replace_all_regex from stringi to do replacements. 
+
+```{r}
+
+# replace the variants of United states with one name.  
+salary_data$country <- stri_replace_all_regex(salary_data$country,
+                                  pattern=c('US', 'USA', 'usa',"U.S.","us","Usa","United States of America","united states",
+                                            "U.S>","U.S.A","U.S.A.","united states of america","Us","The United States",
+                                            "United State of America","United Stated","u.s.","UNITED STATES","united States","USA-- Virgin Islands",
+                                            "United Statws","U.S","Unites States","U. S.","United Sates","United States of American","Uniited States",
+                                            "Worldwide (based in US but short term trips aroudn the world)","United Sates of America",
+                                            "Unted States","United Statesp","United Stattes","United Statea","United Statees","UNited States","Uniyed states",
+                                            "Uniyes States","United States of Americas","US of A","United States of america","U.SA","United Status","U.s.",
+                                            "U.s.a.","USS","Uniteed States","United Stares","Unites states","Unite States","The US","United states of America",
+                                            "For the United States government, but posted overseas","UnitedStates","United statew","United Statues",
+                                            "Untied States","USA (company is based in a US territory, I work remote)","Unitied States","Unitied States",
+                                            "USAB","United Sttes","united stated","United States Of America","Uniter Statez","U. S","USA tomorrow",
+                                            "United Stateds","US govt employee overseas, country withheld","Unitef Stated","United STates","USaa",
+                                            "uSA","america","United y","uS","USD","United Statss","UsA","United  States","United States is America",
+                                            "United states of United States","United StatesD","United States- Puerto Rico","United Statesaa","United Statest",
+                                            "United States govt employee overseas, country withheld","United StatesA tomorrow","United StatesAB",
+                                            "United StatesA (company is based in a United States territory, I work remote)","United StatesS",
+                                            "United Statesa.","RUnited Statessia","United States of A","United StatesA-- Virgin Islands","United StatesA.",
+                                            "United State","United states","United StatesA","United Statess","United StatessA","United States",
+                                            "United Statessmerica","United StatUnited Statess","Canada and United StatessA","United States"),
+                                  replacement="United States",
+                                  vectorize=FALSE)
+
+```
+
+You might want to summarise the counts of records by certain key features. In this case I am interested in knowing how many submissions do we have from countries other than U.S, this is because a quick check through indicated that most submissions are from united states. To confirm that let us group the submissions per country and see how they compare. 
+
+```{r}
+sal_countrygrouped <- salary_data[,.(count=.N),by=.(country)]
+```
+
+We have two variants of united states, let us clean that so that we have a proper summary
+```{r}
+# use gsub to remove the A from states. 
+salary_data$country <- gsub("United StatesA","United States",salary_data$country)
+
+# do the grouping and count the records by the country column 
+percentage.count <- salary_data[,.(totalcount=.N,country)][,.(count=.N,totalcount,country),by=.(country)][,.(percentage=round(count/totalcount*100)),by=.(count,country)] %>% unique()
+
+```
+
+After getting the percentage count of submissions per country we see that United States accounts for 83% of all submissions. Now, me thinks it would be good to filter the data to submissions from United States only. This will also ensure we have the same currency to deal with. It would also be good to consider submissions from the same economy in order to rule out other factors that might inform the differences in salary rates.  
+With that in mind I'll therefore filter submissions from U.S only, good thing is 83% of the original data is still sufficient for our next step, analysis.   
+  
+```{r}
+salary_data_US <- salary_data[country %like% "United States",]
+```
+
+One more thing, another *consistency* check. Seeing that we have filtered our data to United States only, do we have the currency in USD?  
+
+```{r}
+unique(salary_data_US$currency)
+```
+Interesting to note that not all values of the currency column are in USD, there are some observations which have other currencies other than USD. This are probably coming from those who indicated that they are from U.S but their employer is outside of U.S or maybe they are from U.S but employed outside of U.S as such get paid using other currencies.  
+We might need to either convert the currencies or just drop those records which are not in USD currency type. 
+
+Wait a minute, before we drop the currencies that are not in USD, a keen look at the column currency_other shows that there are those who indicated their currency to be other but then went ahead to chose the USD option. 
+
+```{r}
+# for column currency replace other with USD where currency_other == USD
+# data.table approach to replacing values in a column based on a condition in another column. 
+
+salary_data_US <- salary_data_US[currency_other %in% c("USD","American Dollars","US Dollar"), currency := "USD"]
+
+# There are alternative approaches to this, like using case_when with mutate or if_else with mutate. 
+# You could explore such options just to have the knowledge of the alternatives. 
+```
+
+
+```{r}
+
+salary_data_US <- salary_data_US[currency == "USD",]
+
+# if you wanna check if the currency is USD only you could do uncomment and run the following lines of code.  
+#unique(salary_data_US$currency)  
+
+```
+### Data types
+We all know that the annual_salary variable is supposed to be numeric, but it isn't in our data. Let's correct that. 
+
+```{r}
+# convert annual_salary to numerical data type. 
+salary_data_US$annual_salary <- gsub(",","",salary_data_US$annual_salary)
+salary_data_US$annual_salary <- as.numeric(salary_data_US$annual_salary) 
+```
+
+
+### Missing values data subsetting     
+There are two primary ways of dealing with missing values.       
+  * Imputation with mean, median or mode.      
+  * Drop either the rows or columns with missing values.         
+  
+The approach to use really depends on your data, the type of data and where the missing values are occuring.    
+For this case, you notice that there are quite a number of variables with missing values, dropping such is a good option, at least for me seeing that we may not use them in the analysis. Take for example currency_other, job_title_context, income_context, other_monetary_comp variables.     
+
+```{r} 
+
+# we have some values which are null. we drop them  
+salary_data_US <- salary_data_US[ highest_edu_level !="",]  
+
+# remove the NA
+salary_data_US <- salary_data_US[!is.na(annual_salary),]  
+
+# for the gender variable, let us only pick the male and female groupings 
+salary_data_US <- salary_data_US[gender %in% c("Man","Woman")]
+salary_data_US$gender <- as.factor(salary_data_US$gender) 
+```
+
+### Subsetting the data  
+Besides the features/column with missing values, there are other columns that may not be useful in analysis, take for example Timestamp and city. Such can be dropped. 
+No need to have the country column seeing that we already filtered our data to US only.   
+
+```{r}
+# subset the dataset 
+salary_data_US <- salary_data_US[,c("age","annual_salary","professional_experience_years","highest_edu_level","gender","industry","job_title")]
+
+```
+
+### Pinning the data to a board   
+
+```{r}
+
+# create a board
+board <- board_folder("./data",versioned = TRUE)
+
+board %>% pin_write(salary_data_US,"salary_cleaned", type="csv")
+
+# board %>% pin_versions("salary_cleaned")
+
+```
+
+### wrapping up    
+And our data is way much better than it was at first, at least ready to have it used in doing some analysis.    
+Watch out for the next article on Exploratory data analysis on this data and feel free to drop your comments and suggestions on what can be considered regarding this topic and data.    
+
