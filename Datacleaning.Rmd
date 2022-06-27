@@ -38,8 +38,6 @@ library(googlesheets4) # fetching data from google sheets
 I downloaded the data from google sheets then put it in a data folder in my github repository. On a later article I'll write on how to access it directly from googlesheets into R.  
 
 ```{r}
-#salary_data <- fread("https://raw.githubusercontent.com/oyogo/data/main/Ask%20A%20Manager%20Salary%20Survey%202021%20(Responses)%20-%20Form%20Responses%201.csv")
-
 gs4_deauth() # this deactivates authentication. We won't be prompted to login using credentials.
 
 salary_data <- read_sheet("https://docs.google.com/spreadsheets/d/1IPS5dBSGtwYVbjsfbaMCYIWnOuRmJcbequohNxCyGVw/edit?resourcekey#gid=1625408792")
@@ -239,7 +237,6 @@ board <- board_folder("./data",versioned = TRUE)
 
 board %>% pin_write(salary_data_US,"salary_cleaned", type="csv")
 
-# board %>% pin_versions("salary_cleaned")
 
 ```
 
