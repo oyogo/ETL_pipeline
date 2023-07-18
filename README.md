@@ -1,9 +1,3 @@
----
-output:
-  word_document: default
-  html_document: default
-  pdf_document: default
----
 # ETL pipeline: scenario 1   
 
 ![](www/etl.jpg)
